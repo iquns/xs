@@ -1,0 +1,36 @@
+name: sync repo
+on:
+  workflow_dispatch:
+    inputs:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - name: configure ssh
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{secrets.SSH_PRIVATE_KEY}}
+        run: |
+          mkdir -p $HOME/.ssh/
+          echo "$SSH_PRIVATE_KEY" > $HOME/.ssh/id_rsa
+          chmod 600 $HOME/.ssh/id_rsa
+          echo 'Host *' > $HOME/.ssh/config
+          echo '  StrictHostKeyChecking no' >> $HOME/.ssh/config
+          echo '  UserKnownHostsFile /dev/null' >> $HOME/.ssh/config
+          chmod 400 $HOME/.ssh/config
+          cat $HOME/.ssh/config
+      - name: sync code
+        shell: bash
+        timeout-minutes: 2
+        env:
+          SOURCE_REPO_SSH_ADDRESS: ${{secrets.SOURCE_REPO_SSH_ADDRESS}}
+        run: |
+          cd $HOME
+          git clone "$SOURCE_REPO_SSH_ADDRESS" target &> /dev/null
+          cd target
+          git remote add github "git@github.com:$GITHUB_REPOSITORY.git"
+          git push -f github &> /dev/null
+          git push -f github --tags &> /dev/null
+
